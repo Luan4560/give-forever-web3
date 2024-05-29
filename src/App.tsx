@@ -5,32 +5,29 @@ import contractABI from '../GiveForeverABI.json';
 import {  useState } from 'react';
 const { ethereum } = window as never;	
 
-const contractAddress = '0x1A5bd5F009950786c41ce82Bf925F0B026e623dA' // Sepolia
-const provider = new ethers.BrowserProvider(ethereum)
+const contractAddress = '0xd2a5bC10698FD955D1Fe6cb468a17809A08fd005' // Sepolia
+const provider = new ethers.providers.Web3Provider(ethereum)
 let contract = new ethers.Contract(contractAddress, contractABI, provider)
 let signer;
 
 function App() {
   const [donated,setDonated] = useState<any>();
   const [lidoBalance,setLidoBalance] = useState<any>();
-  const [surplus,setSurplus] = useState<any>();
+  const [connectionStatus, setConnectionStatus] = useState<any>('Not Connected');
 
   const connect = async () => {
     await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner(); // Await the promise returned by getSigner()
+    signer = provider.getSigner(); 
     contract = new ethers.Contract(contractAddress, contractABI, signer as any);
-    const userAddress = await signer.getAddress(); // Call getAddress() on the resolved signer object
-    // const networkData = await provider.getNetwork();
-    // if (networkData.chainId === 1) networkName = 'mainnet';
-    // if (networkData.chainId === 5) networkName = 'goerli';
+    const userAddress = await signer.getAddress();  
 
-    console.log(userAddress);
+    setConnectionStatus(`Connected: ${userAddress}`);
     updateBalances();
   }
 
   const deposit = async () => {
     const userAmount = (document.getElementById('deposit-amount') as HTMLInputElement).value ;
-    const weiAmount = ethers.parseEther(userAmount);
+    const weiAmount = ethers.utils.parseEther(userAmount);
     const tx = await contract.deposit({ value: weiAmount });
     await tx.wait();
     updateBalances();
@@ -43,16 +40,17 @@ function App() {
 
   const updateBalances = async () => {
     const donated = await contract.donated();
-    setDonated(ethers.formatEther(donated));
+    setDonated(ethers.utils.formatEther(donated));
     const lidoBalance = await contract.lidoBalance();
-    setLidoBalance(ethers.formatEther(lidoBalance));
-    const surplus = lidoBalance.sub(donated);
-    setSurplus(ethers.formatEther(surplus));
+    setLidoBalance(ethers.utils.formatEther(lidoBalance));
   }
 
   setTimeout(() => {
     updateBalances();
   }, 1000);
+
+  console.log(donated)
+  console.log(lidoBalance)
 
   return (
     <>
@@ -66,9 +64,11 @@ function App() {
           <div>
             Donated: {donated} ETH<br />
             Balance: {lidoBalance} ETH<br />
-            Surplus: {surplus} ETH<br />
           </div>
           <div className="app-box">
+            <div className='app-connection'>
+              {connectionStatus}
+            </div>
             <button id="connect" onClick={connect}>Connect Wallet</button>
           </div>
          
